@@ -1,0 +1,8 @@
+{
+	"colUncertainty": {
+		"s": {
+			"distType": "LogNormal",
+			"sdIndexed" : true
+		}
+	}
+}

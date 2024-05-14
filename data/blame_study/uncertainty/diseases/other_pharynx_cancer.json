@@ -1,0 +1,36 @@
+{
+    "colUncertainty": {
+        "excess_mortality": {
+            "distType": "LogNormal",
+            "sd": 0.1
+        },
+        "disability_rate": {
+            "distType": "LogNormal",
+            "sd": 0.1
+        },
+        "expenditure_rate": {
+            "distType": "Gamma",
+            "sdFrac": 0.1,
+            "correlateKey": "_disease_expenditure_other_pharynx_cancer"
+        },
+        "expenditure_rate_death": {
+            "distType": "Gamma",
+            "sdFrac": 0.1,
+            "correlateKey": "_disease_expenditure_other_pharynx_cancer"
+        },
+        "income": {
+            "distType": "Gamma",
+            "sdFrac": 0.1,
+            "correlateKey": "_disease_income_other_pharynx_cancer"
+        },
+        "income_death": {
+            "distType": "Gamma",
+            "sdFrac": 0.1,
+            "correlateKey": "_disease_income_other_pharynx_cancer"
+        },
+        "incidence": {
+            "distType": "LogNormal",
+            "sdIndexed": true
+        }
+    }
+}
