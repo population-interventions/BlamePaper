@@ -6,7 +6,8 @@
 	"migrationYears": 20,
 	"maxAge" : 110,
 	"hpc_threads" : 1,
-	"hpc_time" : "12:00:00",
+	"hpc_memPerCpu" : 60000,
+	"hpc_time" : "4:00:00",
 	"hpc_outputJobs": 4,
 	"apcLimit" : 15,
 	"fixFlows" : true,
@@ -22,7 +23,7 @@
 	],
 	"default" : {
 		"prevalence" : "base_population",
-		"lifetable_rates" : "base_lifetable_acmr",
+		"lifetable_rates" : "base_lifetable",
 		"birth_table" : "births",
 		"migration_table" : "migration",
 		"diseases" : {
