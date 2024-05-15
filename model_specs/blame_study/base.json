@@ -1,12 +1,12 @@
 {
 	"data_dir" : "blame_study",
 	"startYear" : 2021,
-	"endYear" : 2040,
+	"endYear" : 2151,
 	"birthYears" : 20,
 	"migrationYears": 20,
 	"maxAge" : 110,
 	"hpc_threads" : 1,
-	"hpc_time" : "2:00:00",
+	"hpc_time" : "12:00:00",
 	"hpc_outputJobs": 4,
 	"apcLimit" : 15,
 	"fixFlows" : true,
@@ -81,15 +81,6 @@
 							"uterine_cancer"       : true
 						}
 					}
-				}
-			}
-		}
-	},
-	"scenarios" : {
-		"all" : {
-			"circuit" : {
-				"tobacco" : {
-					"prevalence" : "circuit/prevalence_int"
 				}
 			}
 		},
@@ -1133,14 +1124,6 @@
 				}
 			}
 		},
-		"z_" : {"circuit" : {"tobacco" : {"prevalence" : "circuit/prevalence_int", "diseaseEffects" : {"incidence" : {"diseaseNames" : {
-				"bladder_cancer"       : false}}}}},
-			"diseases" : {
-				"type" : {
-					"bladder_cancer"            : false
-				}
-			}
-		},
 		"z_diabetes_mellitus" : {"circuit" : {"tobacco" : {"prevalence" : "circuit/prevalence_int", "diseaseEffects" : {"incidence" : {"diseaseNames" : {
 				"diabetes_mellitus"       : false}}}}},
 			"diseases" : {
@@ -1278,6 +1261,15 @@
 			}
 		}
 	},
+	"scenarios" : {
+		"all" : {
+			"circuit" : {
+				"tobacco" : {
+					"prevalence" : "circuit/prevalence_int"
+				}
+			}
+		}
+	},
 	"output" : {
 		"pretty" : {
 			"lifetable" : {
@@ -1289,8 +1281,7 @@
 						"total_income"
 					],
 					"discounts" : [0, -0.03],
-					"ageRanges" : [[0, 20], [20, 45], [45, 65], [65, 110]],
-					"yearRanges" : [[0, 10], [10, 20]]
+					"yearRanges" : [[0, 20], [0, 50]]
 				}
 			},
 			"blame" : {
@@ -1307,7 +1298,7 @@
 					"total_income" : 1000000
 				},
 				"strataRename" : {},
-				"yearRanges" : [[0, 10], [0, 20]],
+				"yearRanges" : [[0, 20], [0, 50]],
 				"fullPrecision" : true
 			}
 		}
