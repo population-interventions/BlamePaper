@@ -1,7 +1,7 @@
 {
 	"data_dir" : "blame_study",
 	"startYear" : 2021,
-	"endYear" : 2151,
+	"endYear" : 2150,
 	"birthYears" : 20,
 	"migrationYears": 20,
 	"maxAge" : 110,
@@ -81,6 +81,15 @@
 							"uterine_cancer"       : true
 						}
 					}
+				}
+			}
+		}
+	},
+	"scenarios" : {
+		"all" : {
+			"circuit" : {
+				"tobacco" : {
+					"prevalence" : "circuit/prevalence_int"
 				}
 			}
 		},
@@ -1257,15 +1266,6 @@
 			"diseases" : {
 				"type" : {
 					"uterine_cancer"            : false
-				}
-			}
-		}
-	},
-	"scenarios" : {
-		"all" : {
-			"circuit" : {
-				"tobacco" : {
-					"prevalence" : "circuit/prevalence_int"
 				}
 			}
 		}
