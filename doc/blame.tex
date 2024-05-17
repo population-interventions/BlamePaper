@@ -111,15 +111,15 @@
 
 \section{Overview}
 
-The blame system attributes intervention effects to specific diseases. It answers questions such as ``If smoking drops by 10\%, how many fewer deaths due to stroke do we see over the next 20 years?''. The previous method calculates the answer by running an entire stroke-only model. This quickly becomes expensive when applied generally, as attribution for 20 diseases requires 20 times the computer time. 
+The blame system attributes intervention effects to specific diseases. It answers questions such as ``If smoking drops by 10\%, how many fewer deaths due to stroke do we see over the next 20 years?''. Previous methods had to create and run a distinct single-disease models to answer such questions, which quickly becomes too expensive in terms of computer time when repeated for many diseases and interventions. 
 
-Blame calculate the answers to such questions cheaply, within calculations running alongside every model run. This allows for routine disease attribution outputs, rather than limiting disease attribution to special cases.
+Blame calculates the answers to such questions cheaply, alongside every model run. This allows the PMSLT to routinely generate disease attribution outputs.
 
 \section{Conceptualisation}
 
-To understand blame we need to keep a firm grip on exactly what it is trying to do. Most importantly, blame \textit{does not} attribute population-level outcomes to disease within any particular scenario. Blame is \textit{always} calculated with respect to two scenarios, an intervention and BAU, and only attributes the difference in outcomes between those scenarios to diseases. At no point that blame purport to know the burden of a particular disease within a single scenario. This matches the underlying structure of the PMSLT, but this constraint can be particularly hard to track when down in the weeds.
+To understand blame we need to keep a firm grip on exactly what it is trying to do. Most importantly, blame \textit{does not} attribute population-level outcomes to disease within any particular scenario. Blame is \textit{always} calculated with respect to two scenarios, an intervention and BAU, and only attributes the \textit{differences} between two scenarios to changes in disease rates. Blame does not purport to know the burden of a particular disease within a single scenario. This matches the underlying structure of the PMSLT, but this constraint can be particularly hard to track when down in the weeds.
 
-Blame attributes deaths, HALYs, health system costs, and income changes to diseases. HALYs are the easiest to calculate because disability rates shift linearly, and do not cause any changes in population size. Deaths are the second-easiest, but are complicated by the fact that deaths are coded as rates rather than risks, and the fact that changes in death rates change the size of the living population. The former is dealt with via $x \approx 1 - e^x$ for $x \approx 0$ and rescaling, the latter is one of the more complicated parts of blame.
+Blame attributes deaths, HALYs, health system costs, and income changes to diseases. HALYs are the easiest to calculate because disability rates shift linearly, and do not cause any changes in population size. Deaths are the second-easiest, but are complicated by the fact that deaths are coded as rates rather than risks, and the fact that changes in death rates change the size of the living population. The former is dealt with via $x \approx 1 - e^x$ for $x \approx 0$ followed by rescaling, while the latter is one of the more complicated parts of blame.
 
 Health system costs and income are handled identically, but are each quite complicated due to costs that change by disease and death status. Diseases can have differing first-year, prevalent-year, and last-year of life costs, and people in the main lifetable who live through the year incur different health system costs to those who died.
 
@@ -127,7 +127,7 @@ The first step in the blame algorithm is to attribute deaths to diseases.
 
 \section{Deaths}
 
-Fix a particular year-of-birth cohort $C$. Let $p_{\text{INT}, y}$, $p_{\text{BAU}, y}$, $m_{\text{INT}, y}$, and $m_{\text{BAU}, y}$, be the population and deaths for $C$ in year $y$, for the intervention and BAU respectively. Population is population at the end of the year, and deaths is deaths during the year. Denote the difference in deaths in one year by
+Fix a particular year-of-birth cohort $C$. Let $p_{\text{INT}, y}$, $p_{\text{BAU}, y}$, $m_{\text{INT}, y}$, and $m_{\text{BAU}, y}$, be the population and deaths for $C$ in year $y$, for the intervention and BAU respectively. By $p_{\text{INT}, y}$ we mean population at the end of year $y$, where year $1$ is the first year, and $m_{\text{INT}, y}$ is the deaths during year $y$. Denote the change in deaths between the scenarios, for year $y$, by
 \begin{align*}
 	\Delta m_y := m_{\text{INT}, y} - m_{\text{BAU}, y}.
 \end{align*}
@@ -135,14 +135,14 @@ Fix a particular year-of-birth cohort $C$. Let $p_{\text{INT}, y}$, $p_{\text{BA
 Let $D$ be a set of diseases. We wish to find values $m_{d, y}$, for $d \in D$ and each year $y$, such that
 \begin{align*}
 	\Delta m_y &= \sum_{d \in D} m_{d, y} \\
-	[\Delta m_y]_\text{$d$-only model} &\approx m_{d, y}
+	[\Delta m_y]_\text{$d$-only model} &\approx m_{d, y}.
 \end{align*}
-where $[\ldots]_\text{model}$ denotes a value corresponding to a differently formulated model.
+where $[\ldots]_\text{model}$ denotes an output corresponding to a different model formulation.
 
-Let $a_{\text{INT}, y}$, $a_{\text{BAU}, y}$ and $\Delta a_y$ be the intervention, BAU and delta all-cause mortality of $C$. The PMSLT operates as follows, for both scenarios $S \in \{\text{INT}, \text{BAU}\}$,
+Let $a_{\text{INT}, y}$ and $a_{\text{BAU}, y}$ be the all-cause mortality rate of $C$, in the intervention and BAU respectively. The PMSLT evolves as follows, for both scenarios $S \in \{\text{INT}, \text{BAU}\}$,
 \begin{align*}
 	m_{S, y} &= p_{S, y - 1} \left(1 - e^{-a_{S, y}}\right) \\
-	p_{S, y} &= p_{S, y - 1} - m_{S, y}
+	p_{S, y} &= p_{S, y - 1} - m_{S, y}.
 \end{align*}
 The value of $a_{\text{BAU}, y}$ is sourced from input files, while
 \begin{align*}
@@ -161,9 +161,9 @@ Now consider just the first year of the model, year $1$. The previous population
 	&= p_{\text{INT}, 0} e^{-a_{\text{BAU}, 1}} \left(1 - e^{-\sum_{d \in D} a_{d, 1}}\right) \\
 	&\approx p_{\text{INT}, 0} e^{-a_{\text{BAU}, 1}} \sum_{d \in D} \left(1 - e^{-a_{d, 1}}\right) =: \Delta m'_1
 \end{align*}
-with the final step depending on $x \approx 1 - e^x$ for $x \approx 0$. This approximation is valid because $a_{d,y}$ is the \textit{difference} in population-level fatality rate of disease $d$ between in the BAU and intervention, which will tend to be tiny, even for significant diseases. Performing the blame calculation on the deltas allows for such approximations.
+with the final step depending on $x \approx 1 - e^x$ for $x \approx 0$. This approximation is valid because $a_{d,y}$ is the \textit{difference} in population-level fatality rate of disease $d$ between in the BAU and intervention, which will tend to be tiny, even for significant diseases, because it also depends on the effect size of the intervention.
 
-Now, to calculate $m_{d, 1}$ we rescale by the approximation $\Delta m'_1$ as follows,
+Now, to calculate $m_{d, 1}$ we rescale by $\Delta m'_1$, to prevent small errors in approximation adding up over time,
 \begin{align*}
 	m_{d, 1} = p_{\text{INT}, 0} e^{-a_{\text{BAU}, 1}} \left(1 - e^{-a_{d, 1}}\right) \frac{\Delta m_1}{\Delta m'_1} 
 \end{align*}
@@ -175,7 +175,7 @@ The problem with deaths beyond the first year is that, in general, $p_{\text{INT
 \begin{align*}
 	p_{\text{INT}, y} = p_{\text{BAU}, y} + \sum_{i \leq y} \Delta m_i,
 \end{align*}
-and we have a breakdown of $\Delta m_i$ by disease. This means can attribute changes in population size to each diseases. Denote the change in population caused by disease $d$ by year $y$ by
+and we have a breakdown of $\Delta m_i$ by disease. This means changes to the population size itself can be broken down by disease. Denote the change in population caused by disease $d$, aggregated up to year $y$, by
 \begin{align*}
 	\Delta p_{d, y} := \sum_{i \leq y} m_{d,i}
 \end{align*}
@@ -187,20 +187,89 @@ and note that
 Now we can revisit the general form of the death blame calculation.
 \begin{align*}
 	\Delta m_y &= p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{INT}, y}}\right) - p_{\text{BAU}, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right) \\
-	&= p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{INT}, y}}\right) - \left(p_{\text{INT}, y - 1} - \sum_{d \in D} \Delta p_{d, y} \right)  \left(1 - e^{-a_{\text{BAU}, y}}\right) \\
-	&= p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{INT}, y}}\right) - p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right)  + \sum_{d \in D} \Delta p_{d, y} \left(1 - e^{-a_{\text{BAU}, y}}\right)
+	&= p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{INT}, y}}\right) - \left(p_{\text{INT}, y - 1} - \sum_{d \in D} \Delta p_{d, y - 1} \right)  \left(1 - e^{-a_{\text{BAU}, y}}\right) \\
+	&= p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{INT}, y}}\right) - p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right)  + \sum_{d \in D} \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right)
 \end{align*}
 We know how to handle the first two terms since they are the same as the $\Delta m_1$ case, so 
 \begin{align*}
 	\Delta m_y &= p_{\text{INT}, y-1} e^{-a_{\text{BAU}, y}} \left(1 - e^{-\sum_{d \in D} a_{d, y}}\right)
-	 + \sum_{d \in D} \Delta p_{d, y} \left(1 - e^{-a_{\text{BAU}, y}}\right) \\
+	 + \sum_{d \in D} \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right) \\
 	 &\approx p_{\text{INT}, y - 1} e^{-a_{\text{BAU}, y}} \sum_{d \in D} \left(1 - e^{-a_{d, y}}\right)
-	 + \sum_{d \in D} \Delta p_{d, y} \left(1 - e^{-a_{\text{BAU}, y}}\right) \\
+	 + \sum_{d \in D} \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right) \\
 	 &= \sum_{d \in D} \left(p_{\text{INT}, y - 1} e^{-a_{\text{BAU}, y}} \left(1 - e^{-a_{d, y}}\right)
-	 + \Delta p_{d, y} \left(1 - e^{-a_{\text{BAU}, y}}\right) \right) =: \Delta m'_y.
+	 + \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right) \right) =: \Delta m'_y.
 \end{align*}
-TODO CHECK THE THREE LINES ABOVE
+This gives us $\Delta m'_y$ expressed as the sum of contributions from each disease. Everything can be calculated out, so there is no need to expand the $e^{-a_{\text{INT}, y}}$ term. The first term is the change to deaths caused by the disease in the intervention population, while the second term counts the missing deaths due to the population changing size.
 
-Stopping here is fine (is it?), we have $\Delta m'_y$ expressed as a sum of contributions from diseases. Everything here can be calculated, so we do not need to expand the $e^{-a_{\text{INT}, y}}$. The left term captures the change in the number of deaths due to the change in the size of the population. Note that $\Delta p_{d, y}$ will often be negative, representing an increase in population in the intervention, so more deaths will be attributed to diseases that prevented deaths in the past.
+Note that interventions will tend to reduce the direct deaths caused by disease, increasing the population, so $\Delta p_{d, y}$ will generally be positive. This makes the second term positive, or in other words, this means that preventing deaths in past years causes those deaths to be attributed to the disease in future years. This is entirely as expected, and in fact, if you run a full closed cohort simulation, then $m_{d, y}$ hits zero in the final year, because there is no change to disease rates that prevents death in the long run.
+
+In any case, we can now calculate $m_{d, y}$ using the same renormalisation trick as before.
+\begin{align*}
+	m_{d, y} = \left(p_{\text{INT}, y - 1} e^{-a_{\text{BAU}, y}} \left(1 - e^{-a_{d, y}}\right)
+	+ \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right) \right) \frac{\Delta m_y}{\Delta m'_y} 
+\end{align*}
+
+\subsection{Direct deaths}
+
+Perhaps you do not want to report that your intervention has no impact on deaths long term. In that case, you might be interested in `direct deaths'. This is a form of output produced by the model, I would not recommend using it, but it is produced, and it is used in later steps. So here is how it is calculated.
+
+Let $\Delta c_y$ be the difference in `direct deaths' for year $y$, defined as follows
+\begin{align*}
+	\Delta c_y &:= p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{INT}, y}}\right) - p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right),
+\end{align*}
+and let us find $c_{d, y}$ such that $\Delta c_y = \sum_{d \in D} c_{d, y}$ and $\Delta c_1 = \Delta m_1$, because direct deaths should agree in the first year.
+
+The difference between $\Delta c_y$ and $\Delta m_y$ is that the former assumes that the intervention is only coming into effect at year $y$, i.e.\@ $p_{\text{INT}, y-1} = p_{\text{BAU}, y-1}$. Appropriately, $\Delta c_y$ is exactly the single-year case, which we have already solved, so
+\begin{align*}
+	\Delta c_y &\approx p_{\text{INT}, y-1} e^{-a_{\text{BAU}, y}} \sum_{d \in D} \left(1 - e^{-a_{d, y}}\right) =: \Delta c'_y
+\end{align*}
+Then with renormalisation
+\begin{align*}
+	c_{d, y} = p_{\text{INT}, y-2} e^{-a_{\text{BAU}, y}} \left(1 - e^{-a_{d, y}}\right) \frac{\Delta c_y}{\Delta c'_y}.
+\end{align*}
+
+\section{HALYs}
+
+With deaths out of the way, HALYs are simple. Keep our fixed cohort $C$. Let $b_{\text{INT}, y}$, $b_{\text{BAU}, y}$, $h_{\text{INT}, y}$, and $h_{\text{BAU}, y}$ be the disability rate of $C$ and the HALYs they accrue in year $y$, for the intervention and BAU respectively. Denote the change in HALYs caused by an intervention in year $y$ by
+\begin{align*}
+	\Delta h_y := h_{\text{INT}, y} - h_{\text{BAU}, y}.
+\end{align*}
+As with deaths, we wish to find $h_{d, y}$, for $d \in D$ and each year $y$, such that
+\begin{align*}
+	\Delta h_y &= \sum_{d \in D} h_{d, y} \\
+	[\Delta h_y]_\text{$d$-only model} &\approx h_{d, y}
+\end{align*}
+
+HALYs are calculated in the PMSLT, for scenarios $S \in \{\text{INT}, \text{BAU}\}$, as follows,
+\begin{align*}
+	h_{S, y} = \left(p_{S, y} + \frac{m_{S, y}}{2}\right) (1 - b_{S, y}).
+\end{align*}
+The $\sfrac{m_{S, y}}{2}$ term is present because the model assumes that deaths are randomly distributed within a year. Therefore, people who are dead by the end of the year have lived, on average, for half a year, and accrued HALYs for that period.
+
+The final piece of the puzzle is the definitions of $b_{BAU, y}$ and $b_{INT, y}$. The former comes from an input file, while the latter is
+\begin{align*}
+	b_{\text{INT}, y} := b_{\text{BAU}, y} + \sum_{d \in D} b_{d, y}
+\end{align*}
+where $b_{d, y}$ is the disability rate shift caused by disease $d$, the derivation of which, as with mortality rate, does not concern us. To tidy things up, define the `ability rate' $b'_{S, y} := 1 - b_{S, y}$, so 
+\begin{align*}
+	b'_{\text{INT}, y} = 1 -  b_{\text{BAU}, y} - \sum_{d \in D} b_{d, y} = b'_{\text{BAU}, y} - \sum_{d \in D} b_{d, y}.
+\end{align*}
+This all looks linear and easy, so let's just crank the handle.
+\begin{align*}
+	\Delta h_y &= \left(p_{INT, y} + \frac{m_{INT, y}}{2}\right)b'_{INT, y} - \left(p_{BAU, y} + \frac{m_{BAU, y}}{2}\right) b'_{BAU, y} \\
+	&= \left(p_{INT, y} + \frac{m_{INT, y}}{2}\right) \left(b'_{\text{BAU}, y} - \sum_{d \in D} b_{d, y}\right) \ldots  \\
+	&\;\;\;\; - \left(p_{INT, y} + \frac{m_{INT, y}}{2} - \sum_{d \in D} \left(\Delta p_{d, y} + \frac{m_{d, y}}{2}\right)\right)b'_{BAU, y} \\
+	&= - \sum_{d \in D} b_{d, y}\left(p_{INT, y} + \frac{m_{INT, y}}{2}\right) + \sum_{d \in D} \left(\Delta p_{d, y} + \frac{m_{d, y}}{2}\right)b'_{BAU, y} \\
+	&= \sum_{d \in D} \left(\left(\Delta p_{d, y} + \frac{m_{d, y}}{2}\right)b'_{BAU, y} - b_{d, y}\left(p_{INT, y} + \frac{m_{INT, y}}{2}\right)\right)
+\end{align*}
+The first term is the change in HALYs relative to the BAU due to the differing population size and number of deaths. The second term is the change in HALYs in this year of the intervention due to the shift in disability rate. That the change in population size due to a disease ended up in $\Delta h_y$ is entirely expected, since avoiding death is a good way to generate HALYs. Also, note that $\Delta h_y$ tends to increase over time, because $\left(\Delta p_{d, y} + \frac{m_{d, y}}{2}\right)$ tends to be positive, and $b_{d, y}$, as the shift in disability rate caused by a disease, tends to be negative when disease burden is reduced.
+
+In any case, we have a decomposition of $\Delta h_y$ into contributions from each disease, so
+\begin{align*}
+	h_{d, y} = \left(\Delta p_{d, y} + \frac{m_{d, y}}{2}\right)(1 - b_{BAU, y}) - b_{d, y}\left(p_{INT, y} + \frac{m_{INT, y}}{2}\right).
+\end{align*}
+
+\section{Income and Expenditure}
+
 
 \end{document}
