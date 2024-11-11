@@ -141,11 +141,20 @@ The blame system attributes intervention effects to specific diseases. It answer
 
 Blame calculates the answers to such questions cheaply, alongside every model run. This allows the PMSLT to routinely generate disease attribution outputs.
 
+\subsection{Symbol Glossary}
+Here are some mathematical symbols.
+\begin{itemize}
+	\item $\approx$ means approximately equal, and is often paired with an explanation or constraint for when the approximation holds.
+	\item $:=$ means ``defined to be''. It is used when a new quantity is being defined in equation form. It is distinct from $=$ in the sense that equality is making a mathematical claim, while $:=$ is introducing notation.
+	\item $\in$ means ``is an element of (a set)''. For example, $S \in \{\text{INT}, \text{BAU}\}$ means consider $S$ to be either $\text{INT}$ or $\text{BAU}$, whatever follows holds for both assignments of $S$.
+	\item $'$, as in $x'$, is just a way to name variables. The variable $x'$ will be closely related to $x$, by convention.
+\end{itemize}
+
 \section{Conceptualisation}
 
 To understand blame we need to keep a firm grip on exactly what it is trying to do. Most importantly, blame \textit{does not} attribute population-level outcomes to disease within any particular scenario. Blame is \textit{always} calculated with respect to two scenarios, an intervention and BAU, and only attributes the \textit{differences} between two scenarios to changes in disease rates. Blame does not purport to know the burden of a particular disease within a single scenario. This matches the underlying structure of the PMSLT, but this constraint can be particularly hard to track when down in the weeds.
 
-Blame attributes deaths, HALYs, health system costs, and income changes to diseases. HALYs are the easiest to calculate because disability rates shift linearly, and do not cause any changes in population size. Deaths are the second-easiest, but are complicated by the fact that deaths are coded as rates rather than risks, and the fact that changes in death rates change the size of the living population. The former is dealt with via $x \approx 1 - e^x$ for $x \approx 0$ followed by rescaling, while the latter is one of the more complicated parts of blame.
+Blame attributes deaths, HALYs, health system costs, and income changes to diseases. HALYs are the easiest to calculate because disability rates shift linearly, and do not cause any changes in population size. Deaths are the second-easiest, but are complicated by the exponential decay required to calculate death risk, due to the way deaths change the size of the population. This is dealt with via the approximation $x \approx 1 - e^x$ for $x \approx 0$, followed by rescaling to hit the appropriate difference in aggregate deaths.
 
 Health system costs and income are handled identically, but are each quite complicated due to costs that change by disease and death status. Diseases can have differing first-year, prevalent-year, and last-year of life costs, and people in the main lifetable who live through the year incur different health system costs to those who died.
 
@@ -158,12 +167,12 @@ Fix a particular year-of-birth cohort $C$. Let $p_{\text{INT}, y}$, $p_{\text{BA
 	\Delta m_y := m_{\text{INT}, y} - m_{\text{BAU}, y}.
 \end{align*}
 
-Let $D$ be a set of diseases. We wish to find values $m_{d, y}$, for $d \in D$ and each year $y$, such that
+Let $D$ be a set of diseases. The goal of blame is to find $m_{d, y}$, for $d \in D$ and each year $y$, such that
 \begin{align*}
 	\Delta m_y &= \sum_{d \in D} m_{d, y} \\
 	[\Delta m_y]_\text{$d$-only model} &\approx m_{d, y}.
 \end{align*}
-where $[\ldots]_\text{model}$ denotes an output corresponding to a different model formulation.
+where $[\ldots]_\text{$d$-only model}$ is an alternate model that only includes disease $d$. In other words, the change in deaths attributed to disease $d$, $m_{d, y}$, should approximately match the total $\Delta m_y$ for a model that only includes disease $d$. 
 
 Let $a_{\text{INT}, y}$ and $a_{\text{BAU}, y}$ be the all-cause mortality rate of $C$, in the intervention and BAU respectively. The PMSLT evolves as follows, for both scenarios $S \in \{\text{INT}, \text{BAU}\}$,
 \begin{align*}
@@ -187,21 +196,25 @@ Now consider just the first year of the model, year $1$. The previous population
 	&= p_{\text{INT}, 0} e^{-a_{\text{BAU}, 1}} \left(1 - e^{-\sum_{d \in D} a_{d, 1}}\right) \\
 	&\approx p_{\text{INT}, 0} e^{-a_{\text{BAU}, 1}} \sum_{d \in D} \left(1 - e^{-a_{d, 1}}\right) =: \Delta m'_1
 \end{align*}
-with the final step depending on $x \approx 1 - e^x$ for $x \approx 0$. This approximation is valid because $a_{d,y}$ is the \textit{difference} in population-level fatality rate of disease $d$ between in the BAU and intervention, which will tend to be tiny, even for significant diseases, because it also depends on the effect size of the intervention.
+with the final step depending on $x \approx 1 - e^x$ for $x \approx 0$. This approximation is justified by the fact that $a_{d,y}$ is the \textit{difference} in population-level mortality rate, for a single disease, between in the BAU and intervention. This value will tend to be tiny, even for significant diseases, because it depends on the effect size in the intervention.
 
-Now, to calculate $m_{d, 1}$ we rescale by $\Delta m'_1$, to prevent small errors in approximation adding up over time,
+We now have an approximate decomposition of $\Delta m_1$ by the effect of each disease:
+\begin{align*}
+	\Delta m'_1 &= \sum_{d \in D} p_{\text{INT}, 0} e^{-a_{\text{BAU}, 1}} \left(1 - e^{-a_{d, 1}}\right)
+\end{align*}
+To deal with the approximation, and to avoid compounding errors, we scale the sum by $\sfrac{\Delta m_1}{\Delta m'_1}$. The result is the solution
 \begin{align*}
 	m_{d, 1} = p_{\text{INT}, 0} e^{-a_{\text{BAU}, 1}} \left(1 - e^{-a_{d, 1}}\right) \frac{\Delta m_1}{\Delta m'_1} 
 \end{align*}
-so that $\Delta m_1 = \sum_{d \in D} m_{d, 1}$.
+which satisfies $\Delta m_1 = \sum_{d \in D} m_{d, 1}$, as required.
 
 \subsection{Deaths beyond the first year}
 
-The problem with deaths beyond the first year is that, in general, $p_{\text{INT}, y} \neq p_{\text{BAU}, y}$ for years $y \geq 1$. How do we get around this? Well, the difference between the populations is just the sum of the differences in each year, so
+The previous section was good practise, but now we need to deal with the rest of the model run. In general, the problem with later years is that $p_{\text{INT}, y} \neq p_{\text{BAU}, y}$ for years $y \geq 1$. How do we get around this? In short, we use the disease blame from previous years to attribute blame for changes in population size. Indeed, the difference between populations is driven entirely by difference in mortality,
 \begin{align*}
 	p_{\text{INT}, y} = p_{\text{BAU}, y} + \sum_{i \leq y} \Delta m_i,
 \end{align*}
-and we have a breakdown of $\Delta m_i$ by disease. This means changes to the population size itself can be broken down by disease. Denote the change in population caused by disease $d$, aggregated up to year $y$, by
+and we have a breakdown of $\Delta m_i$ by disease. To do so we denote the change in population caused by disease $d$, aggregated up to year $y$, by
 \begin{align*}
 	\Delta p_{d, y} := \sum_{i \leq y} m_{d,i}
 \end{align*}
@@ -210,7 +223,7 @@ and note that
 		\sum_{d \in D} \Delta p_{d, y} = \sum_{d \in D}\sum_{i \leq y} m_{d,i} = \sum_{i \leq y} \Delta m_i = p_{\text{INT}, y} - p_{\text{BAU}, y}.
 \end{align*}
 
-Now we can revisit the general form of the death blame calculation.
+Now we can define the general form of the death blame calculation.
 \begin{align*}
 	\Delta m_y &= p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{INT}, y}}\right) - p_{\text{BAU}, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right) \\
 	&= p_{\text{INT}, y - 1} \left(1 - e^{-a_{\text{INT}, y}}\right) - \left(p_{\text{INT}, y - 1} - \sum_{d \in D} \Delta p_{d, y - 1} \right)  \left(1 - e^{-a_{\text{BAU}, y}}\right) \\
@@ -225,11 +238,11 @@ We know how to handle the first two terms since they are the same as the $\Delta
 	 &= \sum_{d \in D} \left(p_{\text{INT}, y - 1} e^{-a_{\text{BAU}, y}} \left(1 - e^{-a_{d, y}}\right)
 	 + \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right) \right) =: \Delta m'_y.
 \end{align*}
-This gives us $\Delta m'_y$ expressed as the sum of contributions from each disease. Everything can be calculated out, so there is no need to expand the $e^{-a_{\text{INT}, y}}$ term. The first term is the change to deaths caused by the disease in the intervention population, while the second term counts the missing deaths due to the population changing size.
+This gives us $\Delta m'_y$ expressed as the sum of contributions from each disease, and the two terms of the sum even have neat interpretations. The first term should be familiar from the previous section; it is the difference, due to the change in death rate, felt by the intervention population. The second term counts the change in background deaths felt due to changes in the population size.
 
 Note that interventions will tend to reduce the direct deaths caused by disease, increasing the population, so $\Delta p_{d, y}$ will generally be positive. This makes the second term positive, or in other words, this means that preventing deaths in past years causes those deaths to be attributed to the disease in future years. This is entirely as expected, and in fact, if you run a full closed cohort simulation, then $m_{d, y}$ hits zero in the final year, because there is no change to disease rates that prevents death in the long run.
 
-In any case, we can now calculate $m_{d, y}$ using the same renormalisation trick as before.
+In any case, we can now solve for  $m_{d, y}$, using the same renormalisation trick as before.
 \begin{align*}
 	m_{d, y} = \left(p_{\text{INT}, y - 1} e^{-a_{\text{BAU}, y}} \left(1 - e^{-a_{d, y}}\right)
 	+ \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right) \right) \frac{\Delta m_y}{\Delta m'_y} 
@@ -237,7 +250,7 @@ In any case, we can now calculate $m_{d, y}$ using the same renormalisation tric
 
 \subsection{Direct deaths}\label{sec:directDeath}
 
-Perhaps you do not want to report that your intervention has no impact on deaths long term. In that case, you might be interested in `direct deaths'. This is a form of output produced by the model, I would not recommend using it, but it is produced, and it is used in later steps. So here is how it is calculated.
+Perhaps you do not want to report that your intervention has no impact on deaths long term. In that case, you might be interested in `direct deaths'. This is a form of output produced by the model, I would not recommend reporting it, but it is produced, and it is used in later steps. So here is how it is calculated.
 
 Let $\Delta c_y$ be the difference in `direct deaths' for year $y$, defined as follows
 \begin{align*}
@@ -253,6 +266,7 @@ Then with renormalisation
 \begin{align*}
 	c_{d, y} = p_{\text{INT}, y-2} e^{-a_{\text{BAU}, y}} \left(1 - e^{-a_{d, y}}\right) \frac{\Delta c_y}{\Delta c'_y}.
 \end{align*}
+The issue with direct deaths is that they don't make any sense at a population level. It is possible that there is some simple way to coherently explain the metric in a way that doesn't mislead the reader, but that would have to be worked out before I'd really endorse the measure.
 
 \section{HALYs}
 
@@ -280,7 +294,7 @@ where $b_{d, y}$ is the disability rate shift caused by disease $d$, the derivat
 \begin{align*}
 	b'_{\text{INT}, y} = 1 -  b_{\text{BAU}, y} - \sum_{d \in D} b_{d, y} = b'_{\text{BAU}, y} - \sum_{d \in D} b_{d, y}.
 \end{align*}
-This all looks linear and easy, so let's just crank the handle.
+This looks linear, and thus easy, so we can just crank the handle to find the exact solution.
 \begin{align*}
 	\Delta h_y &= \left(p_{INT, y} + \frac{m_{INT, y}}{2}\right)b'_{INT, y} - \left(p_{BAU, y} + \frac{m_{BAU, y}}{2}\right) b'_{BAU, y} \\
 	&= \left(p_{INT, y} + \frac{m_{INT, y}}{2}\right) \left(b'_{\text{BAU}, y} - \sum_{d \in D} b_{d, y}\right) \ldots  \\
@@ -297,13 +311,13 @@ In any case, we have a decomposition of $\Delta h_y$ into contributions from eac
 
 \section{Income and expenditure}
 
-Population income and health system expenditure are handled identically within the model, so without loss of generality, everything that follows will refer just to expenditure. The expenditure blame system is complicated by the fact that expenditure changes in last year of life, as well as for someone in their first year, death year, or prevalent year with the disease. Counter-intuitive results can arise, such as increased health system due to decreasing the fatality rate from a disease that is relatively cheap to die from.
+Population income and health system expenditure are handled identically within the model, so without loss of generality, everything that follows will refer just to expenditure. The expenditure blame system is complicated by the fact that expenditure changes in last year of life, as well as for someone in their first year, death year, or prevalent year with a disease. Counter-intuitive results can arise, such as increased health system costs due to decreasing the fatality rate from a disease that is relatively cheap to die from.
 
 Let $t_{\text{INT}, y}$ and $t_{\text{BAU}, y}$ be the total health system expenditure, in year $y$, for the intervention and BAU respectively. For $S \in \{\text{INT}, \text{BAU}\}$, the PMSLT calculates $t_{S, y}$ as follows
 \begin{align*}
 	t_{S, y} = p_{S, y} r_{S, y} + m_{S, y} \ell_{S, y}
 \end{align*}
-where $r_{S, y}$ is the expenditure rate for people who live through the year, and $\ell_{S, y}$ is the expenditure rate for people who die in the year (last year of life). There is a model specification key, \path{lifetableDeathAsEvent}, that replaces $p_{S, y}$ with $\left(p_{S, y} + \frac{m_{S, y}}{2}\right)$, which essentially treats $\ell_{S, y}$ as the event cost of death. This document will stick with end-of-year view presented in the equation above.
+where $r_{S, y}$ is the expenditure rate for people who live through the year, and $\ell_{S, y}$ is the expenditure rate for people who die in the year (last year of life). There is a model specification key, \path{lifetableDeathAsEvent}, that replaces $p_{S, y}$ with $\left(p_{S, y} + \frac{m_{S, y}}{2}\right)$, which treats $\ell_{S, y}$ as the event cost of death. We tend to not do that anymore (the pipeline produces year-of-death values, rather than death-event values), so this document will stick to the year-of-death view.
 
 The blame system calculates the two components of $t_{S, y}$ separately, then adds them together. So denote the living and dead parts of expenditure to be
 \begin{align*}
@@ -330,7 +344,7 @@ So far we have defined chronic disease within a single scenario. For blame, we n
 	r_{d, y} := 
 	\left(\vec{p}^I_{d, y}\vec{E}^I_{d} + \bar{p}^I_{d, y}\bar{E}^I_{d}\right) - \left(\vec{p}^B_{d, y}\vec{E}^B_{d} + \bar{p}^B_{d, y}\bar{E}^B_{d}\right)
 \end{align*}
-where $\bar{E}^S_d$ and $\vec{E}^S_d$ are the prevalent and first year expenditure rates of disease $d$ in scenario $S$, respectively. Note that $\bar{E}^I_d = \bar{E}^B_d$ and $\vec{E}^I_d = \vec{E}^B_d$ in all models at time of writing, it is just something that could be changed.
+where $\bar{E}^S_d$ and $\vec{E}^S_d$ are the prevalent and first year expenditure rates of disease $d$ in scenario $S$, respectively. Note that $\bar{E}^I_d = \bar{E}^B_d$ and $\vec{E}^I_d = \vec{E}^B_d$ in all models at time of writing, but a model could intervene directly on the expenditure of disease phases.
 
 \subsection{Living expenditure}
 
@@ -347,40 +361,80 @@ Recall that $\bar{t}_{S, y} = p_{S, y} r_{S, y}$. The PMSLT calculates rates in 
 \begin{align*}
 	r_{\text{INT}, y} := r_{\text{BAU}, y} + \sum_{d \in D} r_{d, y}.
 \end{align*}
-Now we have enough to crank the handle.
+Now we just crank the handle.
 \begin{align*}
 	\Delta \bar{t}_y &= p_{\text{INT}, y} r_{\text{INT}, y} - p_{\text{BAU}, y} r_{\text{BAU}, y} \\
 	&= p_{\text{INT}, y}\left( r_{\text{BAU}, y} + \sum_{d \in D} r_{d, y}\right) - \left(p_{\text{INT}, y} - \sum_{d \in D} \Delta p_{d, y} \right) r_{\text{BAU}, y} \\
 	&= p_{\text{INT}, y}r_{\text{BAU}, y} + p_{\text{INT}, y}\sum_{d \in D} r_{d, y} - p_{\text{INT}, y}r_{\text{BAU}, y} + r_{\text{BAU}, y}\sum_{d \in D} \Delta p_{d, y} \\
 	&= \sum_{d \in D} \left(p_{\text{INT}, y}r_{d, y} + r_{\text{BAU}, y} \Delta p_{d, y}\right)
 \end{align*}
-So $\bar{t}_{y, d} = p_{\text{INT}, y}r_{d, y} + r_{\text{BAU}, y} \Delta p_{d, y}$.
+So 
+\begin{align*}
+	\bar{t}_{y, d} = p_{\text{INT}, y}r_{d, y} + r_{\text{BAU}, y} \Delta p_{d, y}
+\end{align*}
+As we might expect, the expenditure blame has the same two components as seen in earlier sections. The first component is the difference due to the changed rate on the intervention population, while the second is the effect of the changed population, using the BAU rate.
 
 \subsection{Death expenditure}
 
-This is where it gets tricky. Rather than calculate a general rate of expenditure for people that lived through the year, we are trying to calculate the rate for people who died. This implies a few properties that our solution should satisfy.
+Last but not least, changes in expenditure during the final year of life. This is the trickiest step of the method, and is unique in that blame is \textit{required} for the main results of the PMSLT, even if blame is not reported. To see this for yourself, ignore blame for the moment, and consider the following properties that we would want death expenditure rate to satisfy.
 \begin{itemize}
-	\item If a disease causes no changes in mortality rate during a year, then it should also cause no change to the average cost of dying in that year.
-	\item A disease that is relatively cheap to die from will \textit{increase} the average cost of dying, when we \textit{decrease} mortality from that disease.
+	\item If the intervention causes no change in the mortality or death expenditure rate of a disease, then the disease should have no effect on the aggregate death expenditure rate.
+	\item If an intervention \textit{reduces} the death rate of a disease, and the disease is ``relatively cheap'' to due from, then the \textit{average} expenditure rate per death in the year should \textit{increase}.
 \end{itemize}
-This is weird when compared to living expenditure, as reducing the prevalence of any disease with positive health expenditure costs will always reduce health expenditure costs, from a single-year perspective. To deal with this, the PMSLT uses the blame system to calculate death expenditure, then uses the result to derive a rate.
+Now consider a model with two diseases, $A$ and $B$, where $A$ has an above average-death expenditure rate and $B$ has a below-average death expenditure rate. Say the intervention reduces deaths, at the lifetable level, by $5\%$, what is the change to the death expenditure rate? We can't even know whether the expenditure rate per death should increase or decrease, without knowing whether the change in deaths were due to disease $A$ or $B$. So doing death expenditure rates properly requires blame.
+
+The PMSLT ends up doing blame backwards for expenditure; it first directly calculates the effect of each disease, and only then used the effects to produce an aggregate, which can be divided by aggregate deaths to calculate death expenditure rate.
 
 The first step is to attribute direct deaths, $c_{d,y}$, to each disease $d$, as per Section \ref{sec:directDeath}. Recall that direct deaths are the deaths caused by the intervention on each disease, but with the assumption that it is always the first year of the intervention. Changes in death rate due to any difference between the BAU an intervention populations are ignored.
 
-With direct deaths, we can calculate the difference in direct death expenditure, $\Delta \widehat{t}_y$, as follows
+With direct deaths, we can calculate the difference in direct death expenditure, $\Delta \widehat{c}_y$, as follows
 \begin{align*}
-	\Delta \widehat{t}_y = \sum_{d \in D} c_{d, y} \widehat{E}_d 
+	\Delta \widehat{c}_y := \sum_{d \in D} c_{d, y} \widehat{E}_d 
 \end{align*}
-where $\widehat{E}_d$ is the expenditure rate per death by disease $d$. This yields the change in deaths, but there are many deaths in the intervention that are not directly attributable to a change in disease rates. For these deaths, of which there are $(m_{\text{INT}, y} - \Delta c_y)$, we use the population-level death rate, $\widehat{E}_\text{INT}$. So then the total death expenditure of the intervention is
+where $\widehat{E}_d$ is the expenditure rate per death by disease $d$. This yields the change in deaths, but there are many deaths in the intervention that are not directly attributable to a change in disease rates. By definition there are $m_{\text{INT}, y}$ deaths in the intervention, and there are
 \begin{align*}
-	\widehat{t}_{\text{INT}, y} := \left(m_{\text{INT}, y} - \Delta c_y\right)\widehat{E}_\text{INT} + \Delta \widehat{t}_y.
+	\Delta c_y := \sum_{d \in D} c_{d, y}
+\end{align*}
+direct deaths, so we are yet to account for the expenditure of $(m_{\text{INT}, y} - \Delta c_y)$ deaths. We apply the population-level death rate cost, $\widehat{E}_\text{BAU}$, since the distribution of these deaths matches the average in the overall population. So the total death expenditure of the intervention is
+\begin{align*}
+	\widehat{t}_{\text{INT}, y} := \left(m_{\text{INT}, y} - \Delta c_y\right)\widehat{E}_\text{BAU} + \Delta \widehat{c}_y.
 \end{align*}
 
 Now to calculate the new death expenditure rate, $\ell_{\text{INT}, y}$, we just divide by the number of deaths
 \begin{align*}
 	\ell_{\text{INT}, y} &= \frac{\widehat{t}_{\text{INT}, y}}{m_{\text{INT}, y}}.
 \end{align*}
+The aggregate death expenditure rate, $\ell_{\text{INT}, y}$, is routinely output by the PMSLT, but it is derived via blame, rather than using the rate shift method of most of the rest of the model.
 
-TODO, adding the blames for each disease.
+Anyway, now that we have $\ell_{\text{INT}, y}$, the rest of death expenditure blame is relatively straightforward. We want to find $\widehat{t}_{d, y}$, for $d \in D$ and each year $y$, such that
+\begin{align*}
+	\Delta \widehat{t}_y &= \sum_{d \in D} \widehat{t}_{d, y} \\
+	[\Delta \widehat{t}_y]_\text{$d$-only model} &\approx \widehat{t}_{d, y}.
+\end{align*}
+and, by definition,
+\begin{align*}
+	\Delta \widehat{t}_y &= \widehat{t}_{\text{INT}, y}  - \widehat{t}_{\text{BAU}, y} \\
+	&= \left(m_{\text{INT}, y} - \Delta c_y\right)\widehat{E}_\text{BAU} + \Delta \widehat{c}_y - m_{\text{BAU}, y}\widehat{E}_\text{BAU} \\
+	&= \left(m_{\text{INT}, y}  - m_{\text{BAU}, y} - \Delta c_y\right)\widehat{E}_\text{BAU} + \Delta \widehat{c}_y \\
+	&= \left(\Delta m_y - \Delta c_y\right)\widehat{E}_\text{BAU} + \Delta \widehat{c}_y
+\end{align*}
+Now we can replace $\Delta m_y$ and $\Delta c_y$ with expansions from previous sections.
+\begin{align*}
+	\Delta \widehat{t}_y &= ( p_{\text{INT}, y-1} e^{-a_{\text{BAU}, y}} \left(1 - e^{-\sum_{d \in D} a_{d, y}}\right)
+	+ \sum_{d \in D} \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right) - \\
+	&\ldots  p_{\text{INT}, y} e^{-a_{\text{BAU}, y}} \left(1 - e^{-\sum_{d \in D} a_{d, y}}\right) )\widehat{E}_\text{BAU} + \Delta \widehat{c}_y.
+\end{align*}
+As you might expect, direct deaths cancels out perfectly with the direct part of $\Delta m_y$. So,
+\begin{align*}
+	\Delta \widehat{t}_y &= \sum_{d \in D} \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right)\widehat{E}_\text{BAU} + \Delta \widehat{c}_y \\
+	&= \sum_{d \in D} \left(\Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right)\widehat{E}_\text{BAU}  + c_{d, y} \widehat{E}_d \right)
+\end{align*}
+which decomposes to
+\begin{align*}
+	\widehat{t}_{d, y} = \Delta p_{d, y - 1} \left(1 - e^{-a_{\text{BAU}, y}}\right)\widehat{E}_\text{BAU}  + c_{d, y} \widehat{E}_d.
+\end{align*}
+
+TODO, double check that this is how death expenditure blame is calculated.
+
 
 \end{document}
