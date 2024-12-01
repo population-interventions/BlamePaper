@@ -1,9 +1,8 @@
 {
 	"data_dir" : "blame_study",
-	"startYear" : 2021,
-	"endYear" : 2030,
+	"startYear" : 2025,
+	"endYear" : 2035,
 	"birthYears" : 20,
-	"migrationYears": 20,
 	"maxAge" : 110,
 	"hpc_threads" : 1,
 	"hpc_time" : "12:00:00",
@@ -24,11 +23,10 @@
 		"prevalence" : "base_population",
 		"lifetable_rates" : "base_lifetable",
 		"birth_table" : "births",
-		"migration_table" : "migration",
 		"diseases" : {
 			"type" : {
-				"lrti"                      : "acute",
-				"lung_cancer"               : "chronic"
+				"lung_cancer" : "chronic",
+				"stroke"      : "chronic"
 			}
 		},
 		"circuit" : {
@@ -39,8 +37,8 @@
 					"incidence" : {
 						"diseaseRrDir" : "circuit/rr_disease",
 						"diseaseNames" : {
-							"lrti"                 : true,
-							"lung_cancer"          : true
+							"lung_cancer" : true,
+							"stroke"      : true
 						}
 					}
 				}
@@ -48,28 +46,10 @@
 		}
 	},
 	"scenarios" : {
-		"all" : {
+		"int" : {
 			"circuit" : {
 				"tobacco" : {
-					"prevalence" : "circuit/prevalence_int"
-				}
-			}
-		},
-		"lrti_only" : {"circuit" : {"tobacco" : {"prevalence" : "circuit/prevalence_int", "diseaseEffects" : {"incidence" : {"diseaseNames" : {
-				"lrti"                 : true,
-				"lung_cancer"          : false}}}}},
-			"diseases" : {
-				"type" : {
-					"lrti"                      : "acute",
-					"lung_cancer"               : false
-				}
-			}
-		},
-		"z_lrti" : {"circuit" : {"tobacco" : {"prevalence" : "circuit/prevalence_int", "diseaseEffects" : {"incidence" : {"diseaseNames" : {
-				"lrti"       : false}}}}},
-			"diseases" : {
-				"type" : {
-					"lrti"            : false
+					"prevalence" : "circuit/prevalence_10"
 				}
 			}
 		}
